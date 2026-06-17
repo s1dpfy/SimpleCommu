@@ -1,1 +1,1 @@
-https://github.com/s1dpfy/SimpleCommu
+https://simplecommu.onrender.com/
