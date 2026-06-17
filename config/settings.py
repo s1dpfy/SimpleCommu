@@ -29,7 +29,6 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok.io',
     'https://*.ngrok.app',
     'https://simplecommu.onrender.com',
-    'https://*.onrender.com',
 ]
 
 INSTALLED_APPS = [
