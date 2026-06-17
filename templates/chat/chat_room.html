@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="chat-container" class="flex flex-col h-[calc(100dvh-100px)] md:h-[500px]">
+    
+    <div class="bg-[#eee] border border-[#ccc] border-b-0 p-2 flex justify-between items-center shrink-0">
+        <div>
+            <span class="font-bold text-[#333]">{{ channel.name }} </span>
+            <span class="text-[#888] font-normal text-[11px] ml-1">({{ workspace.name }})</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-[#4a82ce] font-bold text-[11px]">참여 인원: <span id="user-count">1</span>명</span>
+            <a href="{% url 'workspace_detail' workspace.uuid %}" class="text-[#666] hover:underline">나가기 ⓧ</a>
+        </div>
+    </div>
+
+    <div id="chat-log" class="flex-1 border border-[#999] bg-white overflow-y-scroll p-3 leading-relaxed">
+        {% if chat_messages %}
+            <div class="text-center bg-[#fff0e6] text-[#ff6600] font-bold text-[11px] border border-[#ffcc99] py-1 mb-3">
+                ※ [방장 권한] 이전에 공유된 파일 및 대화 기록을 불러왔습니다.
+            </div>
+            {% for msg in chat_messages %}
+                <div class="opacity-60 mb-2">
+                    <span class="text-[#888] text-[11px]">[{{ msg.created_at|date:"H:i" }}]</span> 
+                    <strong class="text-[#333]">{{ msg.user.username }}</strong> : 
+                    {% if msg.content %}<span class="text-[#333]">{{ msg.content }}</span>{% endif %}
+                    
+                    {% if msg.file %}
+                        <div class="mt-1">
+                            <a href="{{ msg.file.url }}" download="{{ msg.filename }}" class="text-blue-700 font-bold underline bg-[#f4f4f4] px-1.5 py-0.5 border border-[#ccc] text-[11px] inline-block">{{ msg.filename }}</a>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <div class="border-b border-dashed border-[#ccc] my-2"></div>
+        {% else %}
+            <div class="text-center text-[#999] text-[11px] border-b border-dashed border-[#ccc] pb-2 mb-2">
+                ※ 공유 파일과 대화 내용은 보존되지 않으며, 방 폭파 및 퇴장 시 영구 삭제됩니다. (최대 8MB)
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="bg-[#f0f0f0] border border-[#ccc] border-t-0 p-2 flex gap-1 items-center shrink-0">
+        
+        <label class="btn-classic font-bold text-[11px] shrink-0 cursor-pointer text-center py-1">
+            📎 파일첨부
+            <input type="file" id="chat-file-input" class="hidden"> </label>
+        
+        <input id="chat-message-input" type="text" placeholder="메시지를 입력하세요..." class="border border-[#999] flex-1 px-2 py-1.5 md:py-1 mx-1 focus:outline-none focus:border-[#4a82ce] text-[12px]" autocomplete="off" autofocus>
+        <button id="chat-message-submit" class="btn-classic font-bold whitespace-nowrap px-3 py-1.5 md:py-1">전송</button>
+    </div>
+
+</div>
+
+{{ channel.id|json_script:"channel-id" }}
+{{ request.user.username|json_script:"current-username" }}
+
+<script>
+    const channelId = JSON.parse(document.getElementById('channel-id').textContent);
+    const currentUsername = JSON.parse(document.getElementById('current-username').textContent);
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const chatSocket = new WebSocket(protocol + window.location.host + '/ws/chat/' + channelId + '/');
+    const chatLog = document.querySelector('#chat-log');
+    const userCountSpan = document.querySelector('#user-count');
+    const container = document.querySelector('#chat-container');
+    
+    function scrollToBottom() { chatLog.scrollTop = chatLog.scrollHeight; }
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            container.style.height = window.visualViewport.height - 60 + 'px';
+            setTimeout(scrollToBottom, 100);
+        });
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+    }
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const msgDiv = document.createElement('div');
+        msgDiv.className = "mb-2";
+        
+        const now = new Date();
+        const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+        if (data.type === 'system') {
+            msgDiv.className = "text-center text-[#888] text-[11px] my-1 bg-[#f9f9f9] border border-[#eee] py-0.5";
+            msgDiv.textContent = data.message;
+            userCountSpan.textContent = data.user_count;
+        } 
+        else if (data.type === 'chat') {
+            const isMe = data.username === currentUsername;
+            const nameClass = isMe ? 'text-[#4a82ce]' : 'text-[#333]';
+            const safeUsername = escapeHTML(data.username);
+            
+            let htmlContent = `<span class="text-[#888] text-[11px]">[${timeStr}]</span> <strong class="${nameClass}">${safeUsername}</strong> : `;
+            
+            if (data.message.trim() !== "") {
+                htmlContent += `<span class="text-[#333]">${escapeHTML(data.message)}</span>`;
+            }
+            
+            // 🚨 실시간 일반 파일 다운로드 박스 렌더링
+            if (data.file_url) {
+                const safeFilename = escapeHTML(data.filename);
+                htmlContent += `
+                    <div class="mt-1">
+                        <a href="${data.file_url}" download="${safeFilename}" class="text-blue-700 font-bold underline bg-[#f4f4f4] px-1.5 py-0.5 border border-[#ccc] text-[11px] inline-block">${safeFilename}</a>
+                    </div>`;
+            }
+
+            msgDiv.innerHTML = htmlContent;
+        }
+        
+        chatLog.appendChild(msgDiv);
+        scrollToBottom();
+    };
+
+    document.querySelector('#chat-message-input').onkeyup = e => { if (e.key === 'Enter') document.querySelector('#chat-message-submit').click(); };
+    document.querySelector('#chat-message-submit').onclick = () => {
+        const input = document.querySelector('#chat-message-input');
+        if (input.value.trim() !== "") {
+            chatSocket.send(JSON.stringify({ 'content': input.value, 'file_url': null, 'filename': null }));
+            input.value = '';
+        }
+    };
+
+    // 🚨 파일 업로드 통신 흐름 (8MB 백엔드 유효성 검증 연동)
+    document.querySelector('#chat-file-input').onchange = function() {
+        if (this.files && this.files[0]) {
+            const fileObj = this.files[0];
+            
+            // 프론트엔드 단 1차 용량 수비 (8MB)
+            if (fileObj.size > 8 * 1024 * 1024) {
+                alert("8MB 이하의 파일만 전송할 수 있습니다.");
+                this.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileObj);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            const inputField = document.querySelector('#chat-message-input');
+            inputField.placeholder = "파일 전송 중...";
+            inputField.disabled = true;
+
+            fetch("{% url 'chat_image_upload' workspace.uuid %}", { // 경로 편의상 주소 이름 유지
+                method: "POST",
+                body: formData
+            })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => { throw new Error(err.message); });
+                return res.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // 업로드된 고유 난수 경로와 원본 명칭을 웹소켓 브로드캐스팅
+                    chatSocket.send(JSON.stringify({ 'content': '', 'file_url': data.file_url, 'filename': data.filename }));
+                }
+                inputField.placeholder = "메시지를 입력하세요...";
+                inputField.disabled = false;
+                inputField.focus();
+            })
+            .catch(err => {
+                alert(err.message || "파일 전송 실패");
+                inputField.placeholder = "메시지를 입력하세요...";
+                inputField.disabled = false;
+            });
+
+            this.value = '';
+        }
+    };
+</script>
+{% endblock %}

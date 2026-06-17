@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    
+    {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
+    <div class="bg-[#f0f0f0] border border-[#ccc] p-2 flex justify-between items-center">
+        <span class="font-bold text-[#333]">▶ 새 카테고리 개설 (Admin Only)</span>
+        <form method="POST" action="{% url 'workspace_list' %}" class="m-0 flex items-center gap-2">
+            {% csrf_token %}
+            <label><input type="checkbox" name="is_public" checked class="align-middle"> 공개</label>
+            <input type="text" name="name" placeholder="카테고리명" required class="border border-[#999] px-1 py-0.5 w-[150px]">
+            <button type="submit" class="btn-classic font-bold">개설하기</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div>
+        <div class="border-b-2 border-[#4a82ce] mb-1 pb-1 font-bold text-[#4a82ce]">■ 전체 카테고리 목록</div>
+        <table class="w-full border-collapse border-t border-[#ccc]">
+            <tr class="bg-[#f4f4f4] text-center border-b border-[#ccc] h-7">
+                <th class="font-normal text-left px-2">카테고리</th>
+                <th class="w-24 font-normal">개설자</th>
+                <th class="w-16 font-normal">입장</th>
+            </tr>
+            {% for ws in workspaces %}
+            <tr class="border-b border-[#e9e9e9] text-center h-7 hover:bg-[#f4f8ff]">
+                <td class="text-left px-2 font-bold">{{ ws.name }}</td>
+                <td class="text-[11px] text-[#666]">{{ ws.owner.username }}</td>
+                <td><a href="{% url 'workspace_detail' ws.uuid %}" class="btn-classic text-[11px] no-underline">입장</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center p-6 text-[#999]">등록된 카테고리가 없습니다.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+</div>
+{% endblock %}

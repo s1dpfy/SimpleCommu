@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    
+    <div class="border-b-2 border-[#4a82ce] pb-2 flex justify-between items-end">
+        <h2 class="text-xl font-bold text-[#333] m-0">■ {{ workspace.name }}</h2>
+        <a href="{% url 'workspace_list' %}" class="btn-classic no-underline text-[11px] whitespace-nowrap">◀ 목록</a>
+    </div>
+
+    <div class="bg-[#f4f8ff] border border-[#b3cce6] p-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
+        <strong class="text-[#4a82ce] whitespace-nowrap shrink-0">▶ 일회성 방 개설</strong>
+        <form method="POST" action="{% url 'channel_create' workspace.uuid %}" class="m-0 flex flex-wrap gap-x-2 gap-y-2 items-center w-full md:w-auto">
+            {% csrf_token %}
+            <div class="flex items-center gap-1 shrink-0">
+                <span class="text-[#666] text-[11px] whitespace-nowrap">방제목:</span>
+                <input type="text" name="name" required class="border border-[#999] px-1 py-0.5 w-[100px] md:w-[120px]">
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <span class="text-[#666] text-[11px] whitespace-nowrap">인원:</span>
+                <input type="number" name="user_limit" value="0" min="0" class="border border-[#999] px-1 py-0.5 w-[40px] text-center">
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <span class="text-[#666] text-[11px] whitespace-nowrap">비번:</span>
+                <input type="text" name="password" placeholder="없음" class="border border-[#999] px-1 py-0.5 w-[50px] md:w-[60px]">
+            </div>
+            <button type="submit" class="btn-classic font-bold text-[11px] shrink-0 whitespace-nowrap">방 만들기</button>
+        </form>
+    </div>
+
+    <div class="border-t border-[#ccc]">
+        
+        <table class="hidden md:table w-full border-collapse min-w-[500px]">
+            <tr class="bg-[#f4f4f4] text-center border-b border-[#ccc] h-7 whitespace-nowrap">
+                <th class="font-normal text-left px-2">대화방 이름</th>
+                <th class="w-16 font-normal shrink-0">비번</th>
+                <th class="w-20 font-normal shrink-0">인원</th>
+                <th class="w-16 font-normal shrink-0">개설자</th>
+                <th class="w-24 font-normal shrink-0">입장/관리</th>
+            </tr>
+            {% for channel in channels %}
+            <tr class="border-b border h-8">
+                <td class="px-2 whitespace-nowrap text-ellipsis overflow-hidden max-w-[150px]">
+                    <span class="font-bold">{{ channel.name }}</span>
+                </td>
+                <td class="text-center shrink-0">
+                    {% if channel.password %}<span class="text-center text-[#666] text-[11px] whitespace-nowrap shrink-0">O</span>{% else %}<span class="text-center text-[#666] text-[11px] whitespace-nowrap shrink-0">X</span>{% endif %}
+                </td>
+                <td class="text-center text-[#666] text-[11px] whitespace-nowrap shrink-0">
+                    {{ channel.active_count }}/{% if channel.user_limit == 0 %}∞{% else %}{{ channel.user_limit }}{% endif %}
+                </td>
+                <td class="text-center text-[#666] text-[11px] whitespace-nowrap shrink-0">{{ channel.creator.username }}</td>
+                <td class="text-center p-1 align-middle">
+                    <div class="flex justify-center items-center gap-1 min-w-max">
+                        
+                        {% if channel.password and request.user != channel.creator %}
+                            <form id="pc-form-{{ channel.id }}" method="POST" action="{% url 'chat_room' workspace.uuid channel.name %}" class="m-0 shrink-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="password" id="pc-pwd-{{ channel.id }}">
+                                <button type="button" onclick="enterSecretRoom('pc-form-{{ channel.id }}', 'pc-pwd-{{ channel.id }}')" class="btn-classic text-[11px] shrink-0 whitespace-nowrap">입장</button>
+                            </form>
+                        {% else %}
+                            <a href="{% url 'chat_room' workspace.uuid channel.name %}" class="btn-classic text-[11px] no-underline shrink-0 whitespace-nowrap">입장</a>
+                        {% endif %}
+                        
+                        {% if request.user == channel.creator or request.user.role == 'ADMIN' or request.user.is_superuser %}
+                            <form method="POST" action="{% url 'channel_delete' workspace.uuid channel.id %}" class="m-0 shrink-0">
+                                {% csrf_token %}
+                                <button type="submit" onclick="return confirm('방을 폭파할까요?');" class="btn-classic text-[11px] text-600 shrink-0 whitespace-nowrap">폭파</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center p-6 text-[#999]">현재 개설된 대화방이 없습니다.</td></tr>
+            {% endfor %}
+        </table>
+
+        <div class="block md:hidden flex flex-col">
+            {% for channel in channels %}
+            <div class="border-b border-[#ccc] p-3 bg-white hover:bg-[#f9f9f9] flex flex-col gap-2">
+                <div class="flex justify-between items-start">
+                    <span class="font-bold text-[13px] text-[#333] break-all leading-tight pr-2">{{ channel.name }}</span>
+                    <span class="shrink-0 mt-0.5">
+                        {% if channel.password %}
+                            <span class="bg-[#ffe6e6] text-red-600 border border-red-300 px-1 py-0.5 text-[10px] font-bold">비밀방</span>
+                        {% else %}
+                            <span class="bg-[#e6f2ff] text-[#4a82ce] border border-[#b3cce6] px-1 py-0.5 text-[10px]">공개방</span>
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between text-[#666] text-[11px] bg-[#f4f4f4] px-2 py-1 border border-[#e9e9e9]">
+                    <span>인원: <strong class="text-[#333]">{{ channel.active_count }}/{% if channel.user_limit == 0 %}∞{% else %}{{ channel.user_limit }}{% endif %}</strong></span>
+                    <span>방장: {{ channel.creator.username }}</span>
+                </div>
+                
+                <div class="flex justify-end mt-1 gap-1">
+                    
+                    {% if channel.password and request.user != channel.creator %}
+                        <form id="mo-form-{{ channel.id }}" method="POST" action="{% url 'chat_room' workspace.uuid channel.name %}" class="m-0 flex items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="password" id="mo-pwd-{{ channel.id }}">
+                            <button type="button" onclick="enterSecretRoom('mo-form-{{ channel.id }}', 'mo-pwd-{{ channel.id }}')" class="btn-classic text-[11px] px-4 py-1 font-bold text-center">입장하기</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'chat_room' workspace.uuid channel.name %}" class="btn-classic text-[11px] no-underline px-4 py-1 font-bold text-center">입장하기</a>
+                    {% endif %}
+
+                    {% if request.user == channel.creator or request.user.role == 'ADMIN' or request.user.is_superuser %}
+                        <form method="POST" action="{% url 'channel_delete' workspace.uuid channel.id %}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" onclick="return confirm('방을 폭파할까요?');" class="btn-classic text-[11px] px-3 py-1 font-bold">폭파</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center p-8 text-[#999] text-[12px] bg-white">현재 개설된 대화방이 없습니다.</div>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
+    <div class="mt-4 border border-[#ff9999] bg-[#fff5f5] p-3 text-center flex flex-col sm:flex-row justify-center items-center gap-2">
+        <span class="text-red-600 font-bold text-[11px] md:text-[12px]">※ [관리자] 카테고리 폐쇄</span>
+        <form method="POST" action="{% url 'workspace_delete' workspace.uuid %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" onclick="return confirm('삭제하시겠습니까?');" class="btn-classic text-red-600 text-[11px]">삭제 실행</button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function enterSecretRoom(formId, inputId) {
+        // 브라우저 기본 팝업(Prompt) 띄우기
+        const pwd = prompt("비밀방입니다.\n비밀번호를 입력하세요:");
+        
+        // 사용자가 취소를 누르지 않고 무언가 입력했을 때만 폼 제출
+        if (pwd !== null) {
+            document.getElementById(inputId).value = pwd;
+            document.getElementById(formId).submit();
+        }
+    }
+</script>
+{% endblock %}

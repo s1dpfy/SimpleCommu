@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Simple Commu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        /* 2000년대 클래식 버튼 스타일 */
+        .btn-classic {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-right-color: #666;
+            border-bottom-color: #666;
+            color: #333;
+            cursor: pointer;
+            padding: 2px 8px;
+            font-size: 1
+            2px;
+        }
+        .btn-classic:active {
+            border: 1px solid #666;
+            border-right-color: #ccc;
+            border-bottom-color: #ccc;
+        }
+    </style>
+</head>
+<body class="bg-[#e9e9e9] text-[#333] text-[12px] font-['Dotum','돋움',sans-serif]">
+    
+    <div class="w-full max-w-[800px] mx-auto md:mt-6 bg-white border-y md:border border-[#999] shadow-none md:shadow-[2px_2px_5px_rgba(0,0,0,0.1)] mb-10">
+        <div class="bg-[#4a82ce] text-white p-2 px-4 flex justify-between items-center border-b border-[#335c99]">
+            <a href="{% url 'workspace_list' %}" class="font-bold text-[14px] hover:underline">Simple Commu</a>
+            {% if request.user.is_authenticated %}
+                <div class="flex gap-4 items-center text-[11px]">
+                    <span>접속자: <strong>{{ request.user.username }}</strong></span>
+                    <form method="POST" action="{% url 'logout' %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="text-white hover:text-[#ffcc00] underline">로그아웃</button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if messages %}
+            <div class="bg-[#ffffcc] border-b border-[#e5e5c3] p-2 text-center text-[#ff0000] font-bold">
+                {% for message in messages %}[알림] {{ message }}<br>{% endfor %}
+            </div>
+        {% endif %}
+        
+        <main class="p-4">
+            {% block content %}{% endblock %}
+        </main>
+
+    </div>
+
+</body>
+</html>
