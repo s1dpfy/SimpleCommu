@@ -9,3 +9,6 @@ python manage.py collectstatic --no-input
 
 echo "데이터베이스 마이그레이션 중..."
 python manage.py migrate
+
+echo "관리자 계정 자동 생성 중..."
+python manage.py createsuperuser --noinput || true
