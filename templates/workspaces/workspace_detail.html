@@ -137,10 +137,7 @@
 
 <script>
     function enterSecretRoom(formId, inputId) {
-        // 브라우저 기본 팝업(Prompt) 띄우기
         const pwd = prompt("비밀방입니다.\n비밀번호를 입력하세요:");
-        
-        // 사용자가 취소를 누르지 않고 무언가 입력했을 때만 폼 제출
         if (pwd !== null) {
             document.getElementById(inputId).value = pwd;
             document.getElementById(formId).submit();

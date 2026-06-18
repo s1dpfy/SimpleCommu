@@ -100,8 +100,7 @@
             if (data.message.trim() !== "") {
                 htmlContent += `<span class="text-[#333]">${escapeHTML(data.message)}</span>`;
             }
-            
-            // 🚨 실시간 일반 파일 다운로드 박스 렌더링
+
             if (data.file_url) {
                 const safeFilename = escapeHTML(data.filename);
                 htmlContent += `
@@ -126,12 +125,10 @@
         }
     };
 
-    // 🚨 파일 업로드 통신 흐름 (8MB 백엔드 유효성 검증 연동)
     document.querySelector('#chat-file-input').onchange = function() {
         if (this.files && this.files[0]) {
             const fileObj = this.files[0];
             
-            // 프론트엔드 단 1차 용량 수비 (8MB)
             if (fileObj.size > 8 * 1024 * 1024) {
                 alert("8MB 이하의 파일만 전송할 수 있습니다.");
                 this.value = '';
@@ -146,7 +143,7 @@
             inputField.placeholder = "파일 전송 중...";
             inputField.disabled = true;
 
-            fetch("{% url 'chat_image_upload' workspace.uuid %}", { // 경로 편의상 주소 이름 유지
+            fetch("{% url 'chat_image_upload' workspace.uuid %}", { 
                 method: "POST",
                 body: formData
             })
@@ -156,7 +153,6 @@
             })
             .then(data => {
                 if (data.status === 'success') {
-                    // 업로드된 고유 난수 경로와 원본 명칭을 웹소켓 브로드캐스팅
                     chatSocket.send(JSON.stringify({ 'content': '', 'file_url': data.file_url, 'filename': data.filename }));
                 }
                 inputField.placeholder = "메시지를 입력하세요...";
