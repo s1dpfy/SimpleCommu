@@ -8,10 +8,10 @@ class Message(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content = models.TextField(blank=True, null=True)
     
-    # 🚨 기존 image_url을 지우고, 일반 파일 저장용 필드로 교체!
-    # 파일은 media/chat_files/ 폴더 안에 저장됩니다.
+    
+    
     file = models.FileField(upload_to='chat_files/', blank=True, null=True)
-    filename = models.CharField(max_length=255, blank=True, null=True) # 다운로드 시 보여줄 원본 파일명
+    filename = models.CharField(max_length=255, blank=True, null=True) 
     
     created_at = models.DateTimeField(auto_now_add=True)
 

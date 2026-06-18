@@ -6,7 +6,7 @@ from workspaces.models import Channel
 from chat.models import Message
 
 class ChatConsumer(AsyncWebsocketConsumer):
-    # ... connect, disconnect 등의 인원수 로직은 그대로 유지 ...
+    
     async def connect(self):
         self.room_id = self.scope['url_route']['kwargs']['channel_id']
         self.room_group_name = f'chat_{self.room_id}'
@@ -30,10 +30,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         content = data.get('content', '')
-        file_url = data.get('file_url', None) # 🚨 파일 주소
-        filename = data.get('filename', None) # 🚨 파일 원본 이름
+        file_url = data.get('file_url', None) 
+        filename = data.get('filename', None) 
         
-        # DB 저장
+        
         await self.save_message(self.room_id, self.user, content, file_url, filename)
         
         await self.channel_layer.group_send(
@@ -72,10 +72,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             channel.save()
         return channel.active_count
 
-    # 🚨 파일 필드와 파일명 매핑 저장
+    
     @database_sync_to_async
     def save_message(self, channel_id, user, content, file_url, filename):
         channel = Channel.objects.get(id=channel_id)
-        # file_url에서 계정 기준 상대경로만 정제하여 FileField 양식에 맞춤
+        
         relative_path = file_url.replace('/media/', '') if file_url else None
         Message.objects.create(channel=channel, user=user, content=content, file=relative_path, filename=filename)
